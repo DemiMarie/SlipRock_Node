@@ -63,6 +63,7 @@ flags = [
 '-isystem', '/usr/include/node',
 '-isystem', '/usr/include',
 '-I', os.path.join(os.path.dirname(__file__), 'node_modules/nan'),
+'-I', os.path.join(os.path.dirname(__file__), 'SlipRock/src'),
 ]
 compilation_database_folder = '/dev/null/etc'
 
