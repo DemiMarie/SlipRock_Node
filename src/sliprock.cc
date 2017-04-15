@@ -8,6 +8,45 @@
 
 namespace {
 
+struct SlipRockBaseWorker : public Nan::AsyncWorker {
+  SlipRockBaseWorker(Nan::Callback *callback, v8::Isolate *isolate,
+                     SliprockConnection *con)
+      : Nan::AsyncWorker(callback), err(0), isolate(isolate), con(con) {}
+  int err = 0;
+  v8::Isolate *isolate;
+  SliprockConnection *con;
+  void HandleErrorCallback() override final {
+    auto err = Nan::ErrnoException(this->err, "sliprock_socket",
+                                   "Failed to create socket", "");
+    v8::Local<v8::Value> args[1] = {err};
+    callback->Call(1, args);
+  }
+};
+
+struct SlipRockCloseWorker : public SlipRockBaseWorker {
+  SlipRockCloseWorker(Nan::Callback *callback, v8::Isolate *isolate,
+                      SliprockConnection *con)
+      : SlipRockBaseWorker(callback, isolate, con) {}
+
+  void Execute() override {
+    errno = 0;
+    sliprock_close(this->con);
+    this->err = errno;
+    if (this->err) {
+      this->SetErrorMessage("Failed to close socket");
+    }
+  }
+
+  void HandleOKCallback() override {
+    v8::Local<v8::Value> args[1] = {Nan::Null()};
+    callback->Call(1, args);
+  }
+
+private:
+  int err;
+  SliprockConnection *con;
+};
+
 static Nan::Persistent<v8::Function> &constructor() {
   static Nan::Persistent<v8::Function> mycon;
   return mycon;
@@ -42,12 +81,38 @@ struct SlipRock : public Nan::ObjectWrap {
   void Wrap(v8::Local<v8::Object> o) { return this->Nan::ObjectWrap::Wrap(o); }
 };
 
+struct SlipRockAcceptWorker : public SlipRockBaseWorker {
+  SlipRockAcceptWorker(Nan::Callback *callback, v8::Isolate *isolate,
+                       SliprockConnection *con)
+      : SlipRockBaseWorker(callback, isolate, con) {}
+
+  void Execute() override {
+    errno = 0;
+    this->res = sliprock_accept(this->con);
+    this->err = errno;
+    if (this->err) {
+      this->SetErrorMessage("Failed to accept from socket");
+    }
+  }
+
+  void HandleOKCallback() override {
+    v8::Local<v8::Value> args[2] = {Nan::Null(),
+                                    Nan::New<v8::Int32>(this->res)};
+    callback->Call(2, args);
+  }
+
+private:
+  int err;
+  int res;
+  SliprockConnection *con;
+};
+
 // Worker that queues the object
-struct SlipRockNewWorker : public Nan::AsyncWorker {
+struct SlipRockNewWorker : public SlipRockBaseWorker {
   SlipRockNewWorker(std::unique_ptr<char[]> buf, size_t length,
                     Nan::Callback *callback, v8::Isolate *isolate)
-      : AsyncWorker(callback), callback(callback), isolate(isolate),
-        buf(std::move(buf)), size(length), con(nullptr) {}
+      : SlipRockBaseWorker(callback, isolate, nullptr), buf(std::move(buf)),
+        size(length) {}
   ~SlipRockNewWorker() { sliprock_close(con); }
 
   void Execute() override {
@@ -65,19 +130,8 @@ struct SlipRockNewWorker : public Nan::AsyncWorker {
         Nan::NewInstance(constructor().Get(this->isolate)).ToLocalChecked();
     (new SlipRock(this->con))->Wrap(instance);
     con = nullptr;
-    v8::Local<v8::Value> args[2] = {
-        Nan::Null(), instance,
-    };
+    v8::Local<v8::Value> args[2] = {Nan::Null(), instance};
     callback->Call(2, args);
-  }
-
-  void HandleErrorCallback() override {
-    assert(nullptr == this->con);
-    auto err = Nan::ErrnoException(this->err, "sliprock_socket", "", "");
-    v8::Local<v8::Value> args[1] = {
-        err,
-    };
-    callback->Call(1, args);
   }
 
 private:
@@ -88,6 +142,7 @@ private:
   int err;
   SliprockConnection *con;
 };
+
 NAN_METHOD(SlipRock::New) {
   if (info.Length() != 2) {
     Nan::ThrowTypeError("Must have exactly 2 arguments");
