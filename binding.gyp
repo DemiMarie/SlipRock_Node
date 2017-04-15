@@ -5,30 +5,27 @@
               '<!(node -e \'require("nan")\')',
               'SlipRock/src',
           ],
-          'target_name': 'bindings',
+          'target_name': 'sliprock',
           'sources': [
               'src/sliprock.cc',
           ],
-          'link_dirs': [
-              'SlipRock/build/src',
-          ],
-          'condition': [
-              ['os=="linux"', {
+          'conditions': [
+              ['OS=="linux"', {
                   'cflags': [
-                      '-std=c++14',
                       '-Wall',
                       '-Wextra',
                       '-pedantic',
                       '-Werror',
                   ],
               }],
-              ['os=="win"', {
+              ['OS=="win"', {
                   'sources': [
-                      './SlipRock/src/sliprock_windows.c',
+                      'SlipRock/src/sliprock_windows.c',
                   ],
-              }, {
+              }],
+              ['OS!="win"', {
                   'sources': [
-                      './SlipRock/src/sliprock.c',
+                      'SlipRock/src/sliprock.c',
                   ],
                   'libraries': [
                       '-lsodium',
