@@ -1,3 +1,7 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+#include <assert.h>
 #include <memory>
 #include <nan.h>
 #include <sliprock.h>
@@ -15,10 +19,13 @@ struct SlipRock : public Nan::ObjectWrap {
   static NAN_METHOD(Close) {
     SlipRock *s = reinterpret_cast<SlipRock *>(
         Nan::GetInternalFieldPointer(info.Holder(), 0));
+    assert(s);
     sliprock_close(s->con);
     s->con = nullptr;
   }
   struct SliprockConnection *con;
+
+  SlipRock(SliprockConnection *con) : con(con) {}
 
   ~SlipRock() { sliprock_close(this->con); }
 
@@ -56,12 +63,21 @@ struct SlipRockNewWorker : public Nan::AsyncWorker {
     assert(nullptr != this->con);
     auto instance =
         Nan::NewInstance(constructor().Get(this->isolate)).ToLocalChecked();
-    (new SlipRock())->Wrap(instance);
+    (new SlipRock(this->con))->Wrap(instance);
     con = nullptr;
     v8::Local<v8::Value> args[2] = {
         Nan::Null(), instance,
     };
     callback->Call(2, args);
+  }
+
+  void HandleErrorCallback() override {
+    assert(nullptr == this->con);
+    auto err = Nan::ErrnoException(this->err, "sliprock_socket", "", "");
+    v8::Local<v8::Value> args[1] = {
+        err,
+    };
+    callback->Call(1, args);
   }
 
 private:
@@ -92,10 +108,6 @@ NAN_METHOD(SlipRock::New) {
   std::unique_ptr<char[]> buf(new char[len + 1]);
   s.ToLocalChecked()->WriteUtf8(buf.get(), len);
   buf[len] = '\0';
-  if (strlen(buf.get()) != len) {
-    Nan::ThrowTypeError("NUL not allowed in a filename");
-    return;
-  }
   Nan::AsyncQueueWorker(new SlipRockNewWorker(
       std::move(buf), len, new Nan::Callback(info[1].As<v8::Function>()),
       info.GetIsolate()));
