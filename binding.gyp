@@ -12,19 +12,28 @@
           'link_dirs': [
               'SlipRock/build/src',
           ],
-          'link_settings': {
-              'libraries': [
-                  '-L<!(pwd)/SlipRock/build/src/',
-                  '-lsliprock',
-                  '-lsodium',
-              ],
-          },
           'condition': [
-              'OS=="linux"', {
+              ['os=="linux"', {
                   'cflags': [
-                      '-std=c++14'
-                  ]
-              }
+                      '-std=c++14',
+                      '-Wall',
+                      '-Wextra',
+                      '-pedantic',
+                      '-Werror',
+                  ],
+              }],
+              ['os=="win"', {
+                  'sources': [
+                      './SlipRock/src/sliprock_windows.c',
+                  ],
+              }, {
+                  'sources': [
+                      './SlipRock/src/sliprock.c',
+                  ],
+                  'libraries': [
+                      '-lsodium',
+                  ],
+              }],
           ]
       }
   ],
