@@ -1,0 +1,8 @@
+# Build products
+build/
+node_modules/
+
+# Editor backups
+*~
+.#*
+#*#
