@@ -1,0 +1,29 @@
+{
+  "name": "sliprock",
+  "version": "0.0.1",
+  "description": "SlipRock bindings for Node.js",
+  "main": "index.js",
+  "dependencies": {
+    "nan": "^2.6.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node --expose-gc index.js",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DemiMarie/sliprock_node.git"
+  },
+  "keywords": [
+    "security",
+    "ipc"
+  ],
+  "author": "Demi Marie Obenour",
+  "license": "ISC",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/DemiMarie/sliprock_node/issues"
+  },
+  "homepage": "https://github.com/DemiMarie/sliprock_node#readme"
+}
