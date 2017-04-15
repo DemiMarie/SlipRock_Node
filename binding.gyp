@@ -10,27 +10,24 @@
               'src/sliprock.cc',
           ],
           'conditions': [
-              ['OS=="linux"', {
-                  'cflags': [
-                      '-Wall',
-                      '-Wextra',
-                      '-pedantic',
-                      '-Werror',
-                  ],
-              }],
               ['OS=="win"', {
                   'sources': [
                       'SlipRock/src/sliprock_windows.c',
                   ],
-              }],
-              ['OS!="win"', {
+              }, {
                   'sources': [
                       'SlipRock/src/sliprock.c',
                   ],
                   'libraries': [
                       '-lsodium',
                   ],
-              }],
+                  'cflags': [
+                      '-Wall',
+                      '-Wextra',
+                      '-pedantic',
+                      '-Werror',
+                  ],
+             }],
           ]
       }
   ],
