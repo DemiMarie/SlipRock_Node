@@ -10,20 +10,14 @@ static Nan::Persistent<v8::Function> &constructor() {
 }
 
 struct SlipRock : public Nan::ObjectWrap {
-  static NAN_METHOD(bind) {
-    if (info.Length() != 1) {
-      Nan::ThrowTypeError("SlipRock#bind takes 1 argument");
-      return;
-    }
-    if (!info[0]->IsFunction()) {
-      Nan::ThrowTypeError("SlipRock#bind: paramenter must be a function");
-      return;
-    }
-    SlipRock *s = ObjectWrap::Unwrap<SlipRock>(info.This());
-    s->Ref();
-  }
   static NAN_METHOD(NewInstance) { info.GetReturnValue().Set(info.This()); }
   static NAN_METHOD(New);
+  static NAN_METHOD(Close) {
+    SlipRock *s = reinterpret_cast<SlipRock *>(
+        Nan::GetInternalFieldPointer(info.Holder(), 0));
+    sliprock_close(s->con);
+    s->con = nullptr;
+  }
   struct SliprockConnection *con;
 
   ~SlipRock() { sliprock_close(this->con); }
@@ -32,7 +26,7 @@ struct SlipRock : public Nan::ObjectWrap {
     auto tpl = Nan::New<v8::FunctionTemplate>(SlipRock::NewInstance);
     tpl->SetClassName(Nan::New("SlipRock").ToLocalChecked());
     tpl->InstanceTemplate()->SetInternalFieldCount(1);
-    Nan::SetPrototypeMethod(tpl, "bind", SlipRock::bind);
+    Nan::SetPrototypeMethod(tpl, "close", SlipRock::Close);
     constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
     auto q = Nan::New<v8::FunctionTemplate>(SlipRock::New);
     Nan::Set(target, Nan::New("new").ToLocalChecked(),
